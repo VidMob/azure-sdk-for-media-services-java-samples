@@ -21,6 +21,8 @@ import java.util.UUID;
 
 import javax.xml.bind.JAXBException;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.windowsazure.Configuration;
 import com.microsoft.windowsazure.core.utils.Base64;
 import com.microsoft.windowsazure.exception.ServiceException;
@@ -39,6 +41,11 @@ import com.microsoft.windowsazure.services.media.implementation.templates.tokenr
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenRestrictionTemplate;
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenRestrictionTemplateSerializer;
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenType;
+import com.microsoft.windowsazure.services.media.implementation.templates.widevine.AllowedTrackTypes;
+import com.microsoft.windowsazure.services.media.implementation.templates.widevine.ContentKeySpecs;
+import com.microsoft.windowsazure.services.media.implementation.templates.widevine.Hdcp;
+import com.microsoft.windowsazure.services.media.implementation.templates.widevine.RequiredOutputProtection;
+import com.microsoft.windowsazure.services.media.implementation.templates.widevine.WidevineMessage;
 import com.microsoft.windowsazure.services.media.models.AccessPolicy;
 import com.microsoft.windowsazure.services.media.models.AccessPolicyInfo;
 import com.microsoft.windowsazure.services.media.models.AccessPolicyPermission;
@@ -310,17 +317,24 @@ public final class Program {
 
         // Create ContentKeyAuthorizationPolicyOption (PlayReady)
         String playReadyLicenseTemplate = configurePlayReadyLicenceTemplate();
-        ContentKeyAuthorizationPolicyOptionInfo option = mediaService
+        ContentKeyAuthorizationPolicyOptionInfo playReadyOption = mediaService
                 .create(ContentKeyAuthorizationPolicyOption.create("PlayReady Option",
                         ContentKeyDeliveryType.PlayReadyLicense.getCode(), playReadyLicenseTemplate, restrictions));
 
+        // Create ContentKeyAuthorizationPolicyOption (Widevine)
+        String widevineLicenseTemplate = configureWidevineLicenceTemplate();
+        ContentKeyAuthorizationPolicyOptionInfo widevineOption = mediaService
+                .create(ContentKeyAuthorizationPolicyOption.create("Widevine Option",
+                        ContentKeyDeliveryType.Widevine.getCode(), widevineLicenseTemplate, restrictions));
+        
         // Create ContentKeyAuthorizationPolicy
         ContentKeyAuthorizationPolicyInfo contentKeyAuthorizationPolicy = mediaService
                 .create(ContentKeyAuthorizationPolicy.create("PlayReady Open Content Key Authorization Policy"));
 
-        // Link the ContentKeyAuthorizationPolicyOption to the ContentKeyAuthorizationPolicy
-        mediaService.action(ContentKeyAuthorizationPolicy.linkOptions(contentKeyAuthorizationPolicy.getId(), option.getId()));
-
+        // Link the ContentKeyAuthorizationPolicyOptions to the ContentKeyAuthorizationPolicy
+        mediaService.action(ContentKeyAuthorizationPolicy.linkOptions(contentKeyAuthorizationPolicy.getId(), playReadyOption.getId()));
+        mediaService.action(ContentKeyAuthorizationPolicy.linkOptions(contentKeyAuthorizationPolicy.getId(), widevineOption.getId()));
+        
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
         
@@ -337,16 +351,23 @@ public final class Program {
 
         // Create ContentKeyAuthorizationPolicyOptions (PlayReady)
         String playReadyLicenseTemplateString = configurePlayReadyLicenceTemplate();
-        ContentKeyAuthorizationPolicyOptionInfo option = mediaService
+        ContentKeyAuthorizationPolicyOptionInfo playReadyOption = mediaService
                 .create(ContentKeyAuthorizationPolicyOption.create("PlayReady Option",
                         ContentKeyDeliveryType.PlayReadyLicense.getCode(), playReadyLicenseTemplateString, restrictions));
 
+        // Create ContentKeyAuthorizationPolicyOption (Widevine)
+        String widevineLicenseTemplate = configureWidevineLicenceTemplate();
+        ContentKeyAuthorizationPolicyOptionInfo widevineOption = mediaService
+                .create(ContentKeyAuthorizationPolicyOption.create("Widevine Option",
+                        ContentKeyDeliveryType.Widevine.getCode(), widevineLicenseTemplate, restrictions));
+        
         // Create ContentKeyAuthorizationPolicy
         ContentKeyAuthorizationPolicyInfo contentKeyAuthorizationPolicy = mediaService
                 .create(ContentKeyAuthorizationPolicy.create("PlayReady Token Content Key Authorization Policy"));
 
-        // Link the ContentKeyAuthorizationPolicyOption to the ContentKeyAuthorizationPolicy
-        mediaService.action(ContentKeyAuthorizationPolicy.linkOptions(contentKeyAuthorizationPolicy.getId(), option.getId()));
+        // Link the ContentKeyAuthorizationPolicyOptions to the ContentKeyAuthorizationPolicy
+        mediaService.action(ContentKeyAuthorizationPolicy.linkOptions(contentKeyAuthorizationPolicy.getId(), playReadyOption.getId()));
+        mediaService.action(ContentKeyAuthorizationPolicy.linkOptions(contentKeyAuthorizationPolicy.getId(), widevineOption.getId()));
 
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
@@ -359,18 +380,22 @@ public final class Program {
     public static void createAssetDeliveryPolicy(AssetInfo asset, ContentKeyInfo key) throws ServiceException {
         String acquisitionUrl = mediaService
                 .create(ContentKey.getKeyDeliveryUrl(key.getId(), ContentKeyDeliveryType.PlayReadyLicense));
-
+        String widevineUrl = mediaService
+                .create(ContentKey.getKeyDeliveryUrl(key.getId(), ContentKeyDeliveryType.Widevine));
+        
         Map<AssetDeliveryPolicyConfigurationKey, String> assetDeliveryPolicyConfiguration
             = new HashMap<AssetDeliveryPolicyConfigurationKey, String>();
         
         assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.PlayReadyLicenseAcquisitionUrl, 
                 acquisitionUrl);
+        assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.WidevineLicenseAcquisitionUrl, 
+                widevineUrl);
         
         AssetDeliveryPolicyInfo assetDeliveryPolicy = mediaService.create(AssetDeliveryPolicy.create()
-                .setName("PlayReady Smooth + Dash + HLS Asset Delivery Policy")
+                .setName("PlayReady & Widevine Dash Asset Delivery Policy")
                 .setAssetDeliveryConfiguration(assetDeliveryPolicyConfiguration)
                 .setAssetDeliveryPolicyType(AssetDeliveryPolicyType.DynamicCommonEncryption)
-                .setAssetDeliveryProtocol(EnumSet.of(AssetDeliveryProtocol.SmoothStreaming, AssetDeliveryProtocol.Dash, AssetDeliveryProtocol.HLS)));
+                .setAssetDeliveryProtocol(EnumSet.of(AssetDeliveryProtocol.Dash)));
 
         // Link the AssetDeliveryPolicy to the Asset
         mediaService.action(Asset.linkDeliveryPolicy(asset.getId(), assetDeliveryPolicy.getId()));
@@ -432,6 +457,27 @@ public final class Program {
         licenseTemplate.setContentKey(new ContentEncryptionKeyFromHeader());
 
         return MediaServicesLicenseTemplateSerializer.serialize(responseTemplate);
+    }
+    
+    private static String configureWidevineLicenceTemplate() throws JsonProcessingException {
+        // Configure Widevine License Template and serialize it to JSON
+        WidevineMessage message = new WidevineMessage();
+        message.allowed_track_types = AllowedTrackTypes.SD_HD;
+        ContentKeySpecs ckspecs = new ContentKeySpecs();
+        message.content_key_specs = new ContentKeySpecs[] { ckspecs };
+        ckspecs.required_output_protection = new RequiredOutputProtection();
+        ckspecs.required_output_protection.hdcp = Hdcp.HDCP_NONE;
+        ckspecs.security_level = 1;
+        ckspecs.track_type = "SD";
+        message.policy_overrides =  new Object() {
+              public boolean can_play = true;
+              public boolean can_persist = true;
+              public boolean can_renew  = false;
+        };
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        return mapper.writeValueAsString(message);
     }
 
     private static String generateTokenRequirements(TokenType tokenType) throws Exception {

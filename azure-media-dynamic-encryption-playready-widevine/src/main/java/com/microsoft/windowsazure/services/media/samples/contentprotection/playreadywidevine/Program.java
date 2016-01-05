@@ -462,18 +462,18 @@ public final class Program {
     private static String configureWidevineLicenceTemplate() throws JsonProcessingException {
         // Configure Widevine License Template and serialize it to JSON
         WidevineMessage message = new WidevineMessage();
-        message.allowed_track_types = AllowedTrackTypes.SD_HD;
+        message.setAllowedTrackTypes(AllowedTrackTypes.SD_HD);
         ContentKeySpecs ckspecs = new ContentKeySpecs();
-        message.content_key_specs = new ContentKeySpecs[] { ckspecs };
-        ckspecs.required_output_protection = new RequiredOutputProtection();
-        ckspecs.required_output_protection.hdcp = Hdcp.HDCP_NONE;
-        ckspecs.security_level = 1;
-        ckspecs.track_type = "SD";
-        message.policy_overrides =  new Object() {
+        message.setContentKeySpecs(new ContentKeySpecs[] { ckspecs });
+        ckspecs.setRequiredOutputProtection(new RequiredOutputProtection());
+        ckspecs.getRequiredOutputProtection().setHdcp(Hdcp.HDCP_NONE);
+        ckspecs.setSecurityLevel(1);
+        ckspecs.setTrackType("SD");
+        message.setPolicyOverrides(new Object() {
               public boolean can_play = true;
               public boolean can_persist = true;
               public boolean can_renew  = false;
-        };
+        });
 
         ObjectMapper mapper = new ObjectMapper();
 

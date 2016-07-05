@@ -1,85 +1,25 @@
 package com.microsoft.windowsazure.services.media.samples.contentprotection.playreadywidevine;
 
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
-import java.net.URI;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import javax.xml.bind.JAXBException;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.windowsazure.Configuration;
 import com.microsoft.windowsazure.core.utils.Base64;
 import com.microsoft.windowsazure.exception.ServiceException;
-import com.microsoft.windowsazure.services.media.EncryptionUtils;
-import com.microsoft.windowsazure.services.media.MediaConfiguration;
-import com.microsoft.windowsazure.services.media.MediaContract;
-import com.microsoft.windowsazure.services.media.MediaService;
-import com.microsoft.windowsazure.services.media.WritableBlobContainerContract;
-import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.ContentEncryptionKeyFromHeader;
-import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.MediaServicesLicenseTemplateSerializer;
-import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.PlayReadyLicenseResponseTemplate;
-import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.PlayReadyLicenseTemplate;
-import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.PlayReadyPlayRight;
-import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.SymmetricVerificationKey;
-import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenClaim;
-import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenRestrictionTemplate;
-import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenRestrictionTemplateSerializer;
-import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenType;
-import com.microsoft.windowsazure.services.media.implementation.templates.widevine.AllowedTrackTypes;
-import com.microsoft.windowsazure.services.media.implementation.templates.widevine.ContentKeySpecs;
-import com.microsoft.windowsazure.services.media.implementation.templates.widevine.Hdcp;
-import com.microsoft.windowsazure.services.media.implementation.templates.widevine.RequiredOutputProtection;
-import com.microsoft.windowsazure.services.media.implementation.templates.widevine.WidevineMessage;
-import com.microsoft.windowsazure.services.media.models.AccessPolicy;
-import com.microsoft.windowsazure.services.media.models.AccessPolicyInfo;
-import com.microsoft.windowsazure.services.media.models.AccessPolicyPermission;
-import com.microsoft.windowsazure.services.media.models.Asset;
-import com.microsoft.windowsazure.services.media.models.AssetDeliveryPolicy;
-import com.microsoft.windowsazure.services.media.models.AssetDeliveryPolicyConfigurationKey;
-import com.microsoft.windowsazure.services.media.models.AssetDeliveryPolicyInfo;
-import com.microsoft.windowsazure.services.media.models.AssetDeliveryPolicyType;
-import com.microsoft.windowsazure.services.media.models.AssetDeliveryProtocol;
-import com.microsoft.windowsazure.services.media.models.AssetFile;
-import com.microsoft.windowsazure.services.media.models.AssetFileInfo;
-import com.microsoft.windowsazure.services.media.models.AssetInfo;
-import com.microsoft.windowsazure.services.media.models.ContentKey;
-import com.microsoft.windowsazure.services.media.models.ContentKeyAuthorizationPolicy;
-import com.microsoft.windowsazure.services.media.models.ContentKeyAuthorizationPolicyInfo;
-import com.microsoft.windowsazure.services.media.models.ContentKeyAuthorizationPolicyOption;
-import com.microsoft.windowsazure.services.media.models.ContentKeyAuthorizationPolicyOptionInfo;
-import com.microsoft.windowsazure.services.media.models.ContentKeyAuthorizationPolicyRestriction;
+import com.microsoft.windowsazure.services.media.*;
+import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.*;
+import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.*;
+import com.microsoft.windowsazure.services.media.implementation.templates.widevine.*;
+import com.microsoft.windowsazure.services.media.models.*;
 import com.microsoft.windowsazure.services.media.models.ContentKeyAuthorizationPolicyRestriction.ContentKeyRestrictionType;
-import com.microsoft.windowsazure.services.media.models.ContentKeyDeliveryType;
-import com.microsoft.windowsazure.services.media.models.ContentKeyInfo;
-import com.microsoft.windowsazure.services.media.models.ContentKeyType;
-import com.microsoft.windowsazure.services.media.models.Job;
-import com.microsoft.windowsazure.services.media.models.JobInfo;
-import com.microsoft.windowsazure.services.media.models.JobState;
-import com.microsoft.windowsazure.services.media.models.ListResult;
-import com.microsoft.windowsazure.services.media.models.Locator;
-import com.microsoft.windowsazure.services.media.models.LocatorInfo;
-import com.microsoft.windowsazure.services.media.models.LocatorType;
-import com.microsoft.windowsazure.services.media.models.MediaProcessor;
-import com.microsoft.windowsazure.services.media.models.MediaProcessorInfo;
-import com.microsoft.windowsazure.services.media.models.ProtectionKey;
-import com.microsoft.windowsazure.services.media.models.ProtectionKeyType;
-import com.microsoft.windowsazure.services.media.models.Task;
+
+import javax.xml.bind.JAXBException;
+import java.io.*;
+import java.net.URI;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.util.*;
 
 public final class Program {
 
@@ -385,10 +325,14 @@ public final class Program {
         
         Map<AssetDeliveryPolicyConfigurationKey, String> assetDeliveryPolicyConfiguration
             = new HashMap<AssetDeliveryPolicyConfigurationKey, String>();
-        
-        assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.PlayReadyLicenseAcquisitionUrl, 
+
+        if (widevineUrl.contains("?")) {
+            widevineUrl = widevineUrl.substring(0, widevineUrl.indexOf("?"));
+        }
+
+        assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.PlayReadyLicenseAcquisitionUrl,
                 acquisitionUrl);
-        assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.WidevineLicenseAcquisitionUrl, 
+        assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.WidevineBaseLicenseAcquisitionUrl,
                 widevineUrl);
         
         AssetDeliveryPolicyInfo assetDeliveryPolicy = mediaService.create(AssetDeliveryPolicy.create()

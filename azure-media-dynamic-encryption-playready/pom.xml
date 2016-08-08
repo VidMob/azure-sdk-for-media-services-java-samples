@@ -2,12 +2,12 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>azure-media-demos</groupId>
   <artifactId>azure-media-dynamic-encryption-playready</artifactId>
-  <version>0.9.1</version>
+  <version>0.9.4</version>
   <dependencies>
   	<dependency>
   		<groupId>com.microsoft.azure</groupId>
   		<artifactId>azure-media</artifactId>
-  		<version>0.9.1</version>
+  		<version>0.9.4</version>
   	</dependency>
   </dependencies>
 </project>

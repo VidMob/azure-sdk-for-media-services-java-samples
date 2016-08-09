@@ -78,8 +78,8 @@ public final class Program {
     private static String scope = "urn:WindowsAzureMediaServices";
     
     // Encoder configuration
-    private static String preferedEncoder = "Azure Media Encoder"; // "Media Encoder Standard";
-    private static String encodingPreset = "H264 Adaptive Bitrate MP4 Set 720p"; // "H264 Multiple Bitrate 720p";
+    private static String preferedEncoder = "Media Encoder Standard";
+    private static String encodingPreset = "H264 Multiple Bitrate 720p";
     
     // Content Key Authorization Policy Token Restriction configuration
     private static boolean tokenRestriction = true; // true: use token restriction policy;

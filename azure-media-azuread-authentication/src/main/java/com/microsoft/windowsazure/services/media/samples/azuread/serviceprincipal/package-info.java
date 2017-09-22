@@ -1,0 +1,1 @@
+package com.microsoft.windowsazure.services.media.samples.azuread.serviceprincipal;

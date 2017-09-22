@@ -137,7 +137,6 @@ public final class Program {
         	InputStream pfx = new FileInputStream("C://repos/000-nogoya/cert/keystore.pfx");
         	String pfxPassword = "1234";
 
-
         	// Setup Azure AD Credentials (in this case using username and password)
         	AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
         			tenant,

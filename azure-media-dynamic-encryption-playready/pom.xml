@@ -7,7 +7,7 @@
   	<dependency>
   		<groupId>com.microsoft.azure</groupId>
   		<artifactId>azure-media</artifactId>
-  		<version>0.9.4</version>
+  		<version>0.9.8-SNAPSHOT</version>
   	</dependency>
   </dependencies>
 </project>

@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBException;
 
@@ -28,6 +30,10 @@ import com.microsoft.windowsazure.services.media.MediaConfiguration;
 import com.microsoft.windowsazure.services.media.MediaContract;
 import com.microsoft.windowsazure.services.media.MediaService;
 import com.microsoft.windowsazure.services.media.WritableBlobContainerContract;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdClientSymmetricKey;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenCredentials;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenProvider;
+import com.microsoft.windowsazure.services.media.authentication.AzureEnvironments;
 import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.ContentEncryptionKeyFromHeader;
 import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.MediaServicesLicenseTemplateSerializer;
 import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.PlayReadyLicenseResponseTemplate;
@@ -78,12 +84,11 @@ public final class Program {
     private static MediaContract mediaService;
 
     // Media Services account credentials configuration
-    private static String mediaServiceUri = "https://media.windows.net/API/";
-    private static String oAuthUri = "https://wamsprodglobal001acs.accesscontrol.windows.net/v2/OAuth2-13";
-    private static String clientId = "%media-services-account-name%";
-    private static String clientSecret = "%media-services-account-key%";
-    private static String scope = "urn:WindowsAzureMediaServices";
-    
+    private static String tenant = "tenant.domain.com";
+    private static String clientId = "<client id>";
+    private static String clientKey = "<client key>";
+    private static String apiserver = "https://accountname.restv2.regionname.media.azure.net/api/";
+
     // Encoder configuration
     private static String preferedEncoder = "Media Encoder Standard";
     private static String encodingPreset = "H264 Multiple Bitrate 720p";
@@ -100,8 +105,22 @@ public final class Program {
     public static void main(String[] args) {
         try {
             // Set up the MediaContract object to call into the Media Services account
-            Configuration configuration = MediaConfiguration.configureWithOAuthAuthentication(
-                    mediaServiceUri, oAuthUri, clientId, clientSecret, scope);
+            ExecutorService executorService = Executors.newFixedThreadPool(5);
+
+            // Setup Azure AD Credentials (in this case using username and password)
+            AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
+                    tenant,
+                    new AzureAdClientSymmetricKey(clientId, clientKey),
+                    AzureEnvironments.AzureCloudEnvironment);
+
+            AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
+
+            // create a new configuration with the new credentials
+            Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
+                    new URI(apiserver),
+                    provider);
+
+            // create the media service provisioned with the new configuration
             mediaService = MediaService.create(configuration);
 
             System.out.println("Azure SDK for Java - PlayReady Dynamic Encryption Sample");
@@ -242,7 +261,7 @@ public final class Program {
                 .setName(String.format("Encoding %s to %s", assetToEncode.getName(), encodingPreset))
                 .addInputMediaAsset(assetToEncode.getId()).setPriority(2).addTaskCreator(task);
         JobInfo job = mediaService.create(jobCreator);
-        
+
         String jobId = job.getId();
         System.out.println("Created Job with Id: " + jobId);
 
@@ -304,7 +323,7 @@ public final class Program {
     public static void addOpenAuthorizationPolicy(ContentKeyInfo contentKey) throws Exception {
         // Create ContentKeyAuthorizationPolicyRestriction (Open)
         List<ContentKeyAuthorizationPolicyRestriction> restrictions = new ArrayList<ContentKeyAuthorizationPolicyRestriction>();
-        restrictions.add(new ContentKeyAuthorizationPolicyRestriction("Open Restriction", 
+        restrictions.add(new ContentKeyAuthorizationPolicyRestriction("Open Restriction",
         		ContentKeyRestrictionType.Open.getValue(), null));
 
         // Create ContentKeyAuthorizationPolicyOption (PlayReady)
@@ -322,7 +341,7 @@ public final class Program {
 
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
-        
+
         System.out.println("Added Content Key Authorization Policy: " + contentKeyAuthorizationPolicy.getName());
     }
 
@@ -349,7 +368,7 @@ public final class Program {
 
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
-        
+
         System.out.println("Added Content Key Authorization Policy: " + contentKeyAuthorizationPolicy.getName());
 
         return tokenRestrictionString;
@@ -361,10 +380,10 @@ public final class Program {
 
         Map<AssetDeliveryPolicyConfigurationKey, String> assetDeliveryPolicyConfiguration
             = new HashMap<AssetDeliveryPolicyConfigurationKey, String>();
-        
-        assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.PlayReadyLicenseAcquisitionUrl, 
+
+        assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.PlayReadyLicenseAcquisitionUrl,
                 acquisitionUrl);
-        
+
         AssetDeliveryPolicyInfo assetDeliveryPolicy = mediaService.create(AssetDeliveryPolicy.create()
                 .setName("PlayReady Smooth + Dash + HLS Asset Delivery Policy")
                 .setAssetDeliveryConfiguration(assetDeliveryPolicyConfiguration)
@@ -410,7 +429,7 @@ public final class Program {
         while (!done) {
             // Sleep for 5 seconds
             Thread.sleep(5000);
-            
+
             // Query the updated Job state
             jobState = mediaService.get(Job.get(jobId)).getState();
             System.out.println("Job state: " + jobState);

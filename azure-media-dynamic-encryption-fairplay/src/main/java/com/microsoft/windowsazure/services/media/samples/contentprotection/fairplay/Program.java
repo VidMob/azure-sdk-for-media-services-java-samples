@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.microsoft.windowsazure.Configuration;
 import com.microsoft.windowsazure.core.utils.Base64;
@@ -28,6 +30,10 @@ import com.microsoft.windowsazure.services.media.MediaConfiguration;
 import com.microsoft.windowsazure.services.media.MediaContract;
 import com.microsoft.windowsazure.services.media.MediaService;
 import com.microsoft.windowsazure.services.media.WritableBlobContainerContract;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdClientSymmetricKey;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenCredentials;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenProvider;
+import com.microsoft.windowsazure.services.media.authentication.AzureEnvironments;
 import com.microsoft.windowsazure.services.media.implementation.templates.fairplay.FairPlayConfiguration;
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.SymmetricVerificationKey;
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenClaim;
@@ -74,11 +80,10 @@ public final class Program {
     private static MediaContract mediaService;
 
     // Media Services account credentials configuration
-    private static String mediaServiceUri = "https://media.windows.net/API/";
-    private static String oAuthUri = "https://wamsprodglobal001acs.accesscontrol.windows.net/v2/OAuth2-13";
-    private static String clientId = "%media-services-account-name%";
-    private static String clientSecret = "%media-services-account-key%";
-    private static String scope = "urn:WindowsAzureMediaServices";
+    private static String tenant = "tenant.domain.com";
+    private static String clientId = "<client id>";
+    private static String clientKey = "<client key>";
+    private static String apiserver = "https://accountname.restv2.regionname.media.azure.net/api/";
     
     // Encoder configuration
     private static String preferedEncoder = "Media Encoder Standard";
@@ -102,9 +107,23 @@ public final class Program {
 
     public static void main(String[] args) {
         try {
-            // Set up the MediaContract object to call into the Media Services account
-            Configuration configuration = MediaConfiguration.configureWithOAuthAuthentication(
-                    mediaServiceUri, oAuthUri, clientId, clientSecret, scope);
+        	// Set up the MediaContract object to call into the Media Services account
+            ExecutorService executorService = Executors.newFixedThreadPool(5);
+
+            // Setup Azure AD Credentials (in this case using username and password)
+            AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
+                    tenant,
+                    new AzureAdClientSymmetricKey(clientId, clientKey),
+                    AzureEnvironments.AzureCloudEnvironment);
+
+            AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
+
+            // create a new configuration with the new credentials
+            Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
+                    new URI(apiserver),
+                    provider);
+
+            // create the media service provisioned with the new configuration
             mediaService = MediaService.create(configuration);
 
             System.out.println("Azure SDK for Java - FairPlay Dynamic Encryption Sample");

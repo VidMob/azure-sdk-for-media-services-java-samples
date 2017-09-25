@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.microsoft.windowsazure.Configuration;
 import com.microsoft.windowsazure.core.utils.Base64;
@@ -26,6 +28,10 @@ import com.microsoft.windowsazure.services.media.MediaConfiguration;
 import com.microsoft.windowsazure.services.media.MediaContract;
 import com.microsoft.windowsazure.services.media.MediaService;
 import com.microsoft.windowsazure.services.media.WritableBlobContainerContract;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdClientSymmetricKey;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenCredentials;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenProvider;
+import com.microsoft.windowsazure.services.media.authentication.AzureEnvironments;
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.SymmetricVerificationKey;
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenClaim;
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.TokenRestrictionTemplate;
@@ -71,16 +77,15 @@ public final class Program {
     private static MediaContract mediaService;
 
     // Media Services account credentials configuration
-    private static String mediaServiceUri = "https://media.windows.net/API/";
-    private static String oAuthUri = "https://wamsprodglobal001acs.accesscontrol.windows.net/v2/OAuth2-13";
-    private static String clientId = "%media-services-account-name%";
-    private static String clientSecret = "%media-services-account-key%";
-    private static String scope = "urn:WindowsAzureMediaServices";
-    
+    private static String tenant = "tenant.domain.com";
+    private static String clientId = "<client id>";
+    private static String clientKey = "<client key>";
+    private static String apiserver = "https://accountname.restv2.regionname.media.azure.net/api/";
+
     // Encoder configuration
     private static String preferedEncoder = "Media Encoder Standard";
     private static String encodingPreset = "H264 Multiple Bitrate 720p";
-    
+
     // Content Key Authorization Policy Token Restriction configuration
     private static boolean tokenRestriction = true; // true: use token restriction policy;
                                                     // false: use open
@@ -93,8 +98,22 @@ public final class Program {
     public static void main(String[] args) {
         try {
             // Set up the MediaContract object to call into the Media Services account
-            Configuration configuration = MediaConfiguration.configureWithOAuthAuthentication(
-                    mediaServiceUri, oAuthUri, clientId, clientSecret, scope);
+            ExecutorService executorService = Executors.newFixedThreadPool(5);
+
+            // Setup Azure AD Credentials (in this case using username and password)
+            AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
+                    tenant,
+                    new AzureAdClientSymmetricKey(clientId, clientKey),
+                    AzureEnvironments.AzureCloudEnvironment);
+
+            AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
+
+            // create a new configuration with the new credentials
+            Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
+                    new URI(apiserver),
+                    provider);
+
+            // create the media service provisioned with the new configuration
             mediaService = MediaService.create(configuration);
 
             System.out.println("Azure SDK for Java - AES Dynamic Encryption Sample");
@@ -142,7 +161,7 @@ public final class Program {
                 // Generate token
                 String testToken = TokenRestrictionTemplateSerializer.generateTestToken(tokenTemplate, null, rawKey,
                         date.getTime(), null);
-                
+
                 System.out.println(tokenTemplate.getTokenType().toString() + " Test Token: Bearer " + testToken);
             }
 
@@ -235,7 +254,7 @@ public final class Program {
                 .setName(String.format("Encoding %s to %s", assetToEncode.getName(), encodingPreset))
                 .addInputMediaAsset(assetToEncode.getId()).setPriority(2).addTaskCreator(task);
         JobInfo job = mediaService.create(jobCreator);
-        
+
         String jobId = job.getId();
         System.out.println("Created Job with Id: " + jobId);
 
@@ -314,7 +333,7 @@ public final class Program {
 
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
-        
+
         System.out.println("Added Content Key Authorization Policy: " + contentKeyAuthorizationPolicy.getName());
     }
 
@@ -341,7 +360,7 @@ public final class Program {
 
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
-        
+
         System.out.println("Added Content Key Authorization Policy: " + contentKeyAuthorizationPolicy.getName());
 
         return tokenRestrictionString;
@@ -354,15 +373,15 @@ public final class Program {
         byte[] randomKey = new byte[16];
         EncryptionUtils.eraseKey(randomKey);
         String envelopeEncryptionIV = Base64.encode(randomKey);
-        
+
         Map<AssetDeliveryPolicyConfigurationKey, String> assetDeliveryPolicyConfiguration
                 = new HashMap<AssetDeliveryPolicyConfigurationKey, String>();
-        
+
         assetDeliveryPolicyConfiguration.put(
                 AssetDeliveryPolicyConfigurationKey.EnvelopeKeyAcquisitionUrl, acquisitionUrl);
         assetDeliveryPolicyConfiguration.put(
                 AssetDeliveryPolicyConfigurationKey.EnvelopeEncryptionIVAsBase64, envelopeEncryptionIV);
-        
+
         AssetDeliveryPolicyInfo assetDeliveryPolicy = mediaService.create(AssetDeliveryPolicy.create()
                 .setName("AES Smooth + Dash + HLS Asset Delivery Policy")
                 .setAssetDeliveryConfiguration(assetDeliveryPolicyConfiguration)
@@ -408,7 +427,7 @@ public final class Program {
         while (!done) {
             // Sleep for 5 seconds
             Thread.sleep(5000);
-            
+
             // Query the updated Job state
             jobState = mediaService.get(Job.get(jobId)).getState();
             System.out.println("Job state: " + jobState);

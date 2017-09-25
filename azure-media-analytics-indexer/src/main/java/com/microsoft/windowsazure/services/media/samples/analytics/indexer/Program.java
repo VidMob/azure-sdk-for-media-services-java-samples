@@ -6,12 +6,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.NoSuchAlgorithmException;
 import java.util.EnumSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.microsoft.windowsazure.Configuration;
 import com.microsoft.windowsazure.exception.ServiceException;
@@ -19,6 +22,10 @@ import com.microsoft.windowsazure.services.media.MediaConfiguration;
 import com.microsoft.windowsazure.services.media.MediaContract;
 import com.microsoft.windowsazure.services.media.MediaService;
 import com.microsoft.windowsazure.services.media.WritableBlobContainerContract;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdClientSymmetricKey;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenCredentials;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenProvider;
+import com.microsoft.windowsazure.services.media.authentication.AzureEnvironments;
 import com.microsoft.windowsazure.services.media.models.AccessPolicy;
 import com.microsoft.windowsazure.services.media.models.AccessPolicyInfo;
 import com.microsoft.windowsazure.services.media.models.AccessPolicyPermission;
@@ -42,15 +49,14 @@ public final class Program {
     private static MediaContract mediaService;
 
     // Media Services account credentials configuration
-    private static String mediaServiceUri = "https://media.windows.net/API/";
-    private static String oAuthUri = "https://wamsprodglobal001acs.accesscontrol.windows.net/v2/OAuth2-13";
-    private static String clientId = "%media-services-account-name%";
-    private static String clientSecret = "%media-services-account-key%";
-    private static String scope = "urn:WindowsAzureMediaServices";
-    
+    private static String tenant = "tenant.domain.com";
+    private static String clientId = "<client id>";
+    private static String clientKey = "<client key>";
+    private static String apiserver = "https://accountname.restv2.regionname.media.azure.net/api/";
+
     // Input file
     private static String mediaFileName = "Azure-Video.wmv";
-    
+
     // Indexer processor configuration parameters
     private static String indexerProcessorName = "Azure Media Indexer";
     private static String indexerTaskPresetTemplateFileName = "indexerTaskPresetTemplate.xml";
@@ -60,7 +66,7 @@ public final class Program {
     private static String captionFormats = "ttml;sami;webvtt";
     private static String generateAIB = "true";
     private static String generateKeywords = "true";
-    
+
     // Destination path
     private static String destinationPath = "IndexerOutput";
 
@@ -71,10 +77,24 @@ public final class Program {
     public static void main(String[] args) {
         try {
             // Set up the MediaContract object to call into the Media Services account
-            Configuration configuration = MediaConfiguration.configureWithOAuthAuthentication(
-                    mediaServiceUri, oAuthUri, clientId, clientSecret, scope);
+            ExecutorService executorService = Executors.newFixedThreadPool(5);
+
+            // Setup Azure AD Credentials (in this case using username and password)
+            AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
+                    tenant,
+                    new AzureAdClientSymmetricKey(clientId, clientKey),
+                    AzureEnvironments.AzureCloudEnvironment);
+
+            AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
+
+            // create a new configuration with the new credentials
+            Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
+                    new URI(apiserver),
+                    provider);
+
+            // create the media service provisioned with the new configuration
             mediaService = MediaService.create(configuration);
-            
+
             System.out.println("Azure SDK for Java - Media Analytics Sample (Indexer)");
 
             // Upload a local file to an Asset
@@ -85,7 +105,7 @@ public final class Program {
             String indexerTaskPresetTemplate = new String(Files.readAllBytes(
                     Paths.get(new URL(Program.class.getClassLoader().getResource(""), indexerTaskPresetTemplateFileName).toURI())));
             String taskConfiguration = String.format(indexerTaskPresetTemplate, title, description, language, captionFormats, generateAIB, generateKeywords);
-            
+
             // Run indexing job to generate output asset
             AssetInfo outputAsset = runIndexingJob(sourceAsset, taskConfiguration);
             System.out.println("Encoded Asset Id: " + outputAsset.getId());
@@ -181,14 +201,14 @@ public final class Program {
                 .setName("Indexing Job")
                 .addInputMediaAsset(asset.getId()).setPriority(0).addTaskCreator(task);
         JobInfo job = mediaService.create(jobCreator);
-        
+
         String jobId = job.getId();
         System.out.println("Created Job with Id: " + jobId);
 
         // Check to see if the Job has completed
         JobState result = checkJobStatus(jobId);
-        // Done with the Job
 
+        // Done with the Job
         if (result != JobState.Finished) {
             System.out.println("The job has finished with a wrong status: " + result.toString());
             throw new RuntimeException();
@@ -198,7 +218,7 @@ public final class Program {
 
         // Get the output Asset
         ListResult<AssetInfo> outputAssets = mediaService.list(Asset.list(job.getOutputAssetsLink()));
-        AssetInfo outputAsset = outputAssets.get(0); 
+        AssetInfo outputAsset = outputAssets.get(0);
 
         System.out.println("Output asset: " + outputAsset.getName());
 
@@ -223,7 +243,7 @@ public final class Program {
 
         return jobState;
     }
-    
+
     private static void downloadAssetFiles(AssetInfo asset, String destinationPath) throws ServiceException, IOException {
         // Create destination directory if does not exist
         new File(destinationPath).mkdir();

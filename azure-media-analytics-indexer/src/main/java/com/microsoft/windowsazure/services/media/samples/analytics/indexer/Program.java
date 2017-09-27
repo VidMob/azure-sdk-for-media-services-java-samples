@@ -76,10 +76,9 @@ public final class Program {
 
     public static void main(String[] args) {
         try {
-            // Set up the MediaContract object to call into the Media Services account
             ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-            // Setup Azure AD Credentials (in this case using username and password)
+            // Connect to Media Services API with service principal and client symmetric key
             AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
                     tenant,
                     new AzureAdClientSymmetricKey(clientId, clientKey),
@@ -115,6 +114,8 @@ public final class Program {
 
             // Done
             System.out.println("Sample completed!");
+
+            executorService.shutdown();
 
         } catch (ServiceException se) {
             System.out.println("ServiceException encountered.");

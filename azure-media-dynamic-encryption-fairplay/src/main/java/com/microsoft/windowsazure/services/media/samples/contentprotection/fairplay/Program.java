@@ -84,7 +84,7 @@ public final class Program {
     private static String clientId = "<client id>";
     private static String clientKey = "<client key>";
     private static String restApiEndpoint = "https://accountname.restv2.regionname.media.azure.net/api/";
-    
+
     // Encoder configuration
     private static String preferedEncoder = "Media Encoder Standard";
     private static String encodingPreset = "H264 Multiple Bitrate 720p";
@@ -95,22 +95,21 @@ public final class Program {
     private static TokenType tokenType = TokenType.JWT; // SWT - Simple web token
                                                         // JWT - Json web token
 
-    // FairPlay specific configuration 
+    // FairPlay specific configuration
     private static String fairPlayASK = "%apple-ask%";
     private static String fairPlayPFXFile = "%pfx-file-path%";
     private static String fairPlayPFXPassword = "%password-of-pfx-file%";
     private static String fairPlayIV; // random generated
-    
+
     // Utility classes should not have a public or default constructor
     private Program() {
     }
 
     public static void main(String[] args) {
         try {
-        	// Set up the MediaContract object to call into the Media Services account
             ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-            // Setup Azure AD Credentials (in this case using username and password)
+            // Connect to Media Services API with service principal and client symmetric key
             AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
                     tenant,
                     new AzureAdClientSymmetricKey(clientId, clientKey),
@@ -180,6 +179,9 @@ public final class Program {
 
             System.out.println("Origin Locator Url: " + url);
             System.out.println("Sample completed!");
+
+            executorService.shutdown();
+
         } catch (ServiceException se) {
             System.out.println("ServiceException encountered.");
             System.out.println(se.toString());
@@ -264,7 +266,7 @@ public final class Program {
                 .setName(String.format("Encoding %s to %s", assetToEncode.getName(), encodingPreset))
                 .addInputMediaAsset(assetToEncode.getId()).setPriority(2).addTaskCreator(task);
         JobInfo job = mediaService.create(jobCreator);
-        
+
         String jobId = job.getId();
         System.out.println("Created Job with Id: " + jobId);
 
@@ -326,7 +328,7 @@ public final class Program {
     public static void addOpenAuthorizationPolicy(ContentKeyInfo contentKey) throws Exception {
         // Create ContentKeyAuthorizationPolicyRestriction (Open)
         List<ContentKeyAuthorizationPolicyRestriction> restrictions = new ArrayList<ContentKeyAuthorizationPolicyRestriction>();
-        restrictions.add(new ContentKeyAuthorizationPolicyRestriction("Open Restriction", 
+        restrictions.add(new ContentKeyAuthorizationPolicyRestriction("Open Restriction",
         		ContentKeyRestrictionType.Open.getValue(), null));
 
         // Create ContentKeyAuthorizationPolicyOption (FairPlay)
@@ -344,7 +346,7 @@ public final class Program {
 
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
-        
+
         System.out.println("Added Content Key Authorization Policy: " + contentKeyAuthorizationPolicy.getName());
     }
 
@@ -371,7 +373,7 @@ public final class Program {
 
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
-        
+
         System.out.println("Added Content Key Authorization Policy: " + contentKeyAuthorizationPolicy.getName());
 
         return tokenRestrictionString;
@@ -380,23 +382,23 @@ public final class Program {
     public static void createAssetDeliveryPolicy(AssetInfo asset, ContentKeyInfo key) throws ServiceException {
         String acquisitionUrl = mediaService
                 .create(ContentKey.getKeyDeliveryUrl(key.getId(), ContentKeyDeliveryType.FairPlay));
-        
+
         // The reason the below code replaces "https://" with "skd://" is because
-        // in the IOS player sample code which you obtained in Apple developer account, 
-        // the player only recognizes a Key URL that starts with skd://. 
-        // However, if you are using a customized player, 
-        // you can choose whatever protocol you want. 
-        // For example, "https". 
+        // in the IOS player sample code which you obtained in Apple developer account,
+        // the player only recognizes a Key URL that starts with skd://.
+        // However, if you are using a customized player,
+        // you can choose whatever protocol you want.
+        // For example, "https".
         acquisitionUrl = acquisitionUrl.replace("https://", "skd://");
         acquisitionUrl = acquisitionUrl.substring(0, acquisitionUrl.indexOf('?'));
 
         Map<AssetDeliveryPolicyConfigurationKey, String> assetDeliveryPolicyConfiguration
             = new HashMap<AssetDeliveryPolicyConfigurationKey, String>();
-        
-        assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.FairPlayBaseLicenseAcquisitionUrl, 
+
+        assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.FairPlayBaseLicenseAcquisitionUrl,
                 acquisitionUrl);
         assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.CommonEncryptionIVForCbcs, fairPlayIV);
-        
+
         AssetDeliveryPolicyInfo assetDeliveryPolicy = mediaService.create(AssetDeliveryPolicy.create()
                 .setName("FairPlay Asset Delivery Policy")
                 .setAssetDeliveryConfiguration(assetDeliveryPolicyConfiguration)
@@ -442,7 +444,7 @@ public final class Program {
         while (!done) {
             // Sleep for 5 seconds
             Thread.sleep(5000);
-            
+
             // Query the updated Job state
             jobState = mediaService.get(Job.get(jobId)).getState();
             System.out.println("Job state: " + jobState);
@@ -458,21 +460,21 @@ public final class Program {
 
     	// Key delivery retrieves askKey by askId and uses this key to generate the response.
     	ContentKeyInfo askContentKey = createFairPlayAskTypeContentKey();
-    	
+
     	// Key delivery retrieves pfxPasswordKey by pfxPasswordId and uses this key to generate the response.
     	ContentKeyInfo passContentKey = createFairPlayPfxPasswordTypeContentKey();
 
     	// iv - 16 bytes random value, must match the iv in the asset delivery policy.
     	fairPlayIV = getRandomHexString(32); // 32 hex chars == 16 bytes
-   	
+
     	KeyStore ks = KeyStore.getInstance("PKCS12");
     	InputStream input = new FileInputStream(
                 new File(Program.class.getClassLoader().getResource("").getPath() + fairPlayPFXFile));
     	ks.load(input, fairPlayPFXPassword.toCharArray());
     	String strPassContentKey = passContentKey.getId().substring("nb:kid:UUID:".length());
     	String strAskContentKey = askContentKey.getId().substring("nb:kid:UUID:".length());
-    	return FairPlayConfiguration.createSerializedFairPlayOptionConfiguration(ks, 
-    			fairPlayPFXPassword, strPassContentKey, 
+    	return FairPlayConfiguration.createSerializedFairPlayOptionConfiguration(ks,
+    			fairPlayPFXPassword, strPassContentKey,
     			strAskContentKey, fairPlayIV);
     }
 
@@ -486,7 +488,7 @@ public final class Program {
 
         return TokenRestrictionTemplateSerializer.serialize(template);
     }
-    
+
     public static byte[] hexStringToByteArray(String s) {
         int len = s.length();
         byte[] data = new byte[len / 2];
@@ -496,7 +498,7 @@ public final class Program {
         }
         return data;
     }
-    
+
     public static ContentKeyInfo createFairPlayAskTypeContentKey() {
         try {
             // Get the protection key id for ContentKey
@@ -538,7 +540,7 @@ public final class Program {
 
         return null;
     }
-        
+
     public static ContentKeyInfo createFairPlayPfxPasswordTypeContentKey() {
         try {
             // Get the protection key id for ContentKey
@@ -575,8 +577,8 @@ public final class Program {
         }
 
         return null;
-    }   
-    
+    }
+
     private static String getRandomHexString(int numchars){
         Random r = new Random();
         StringBuffer sb = new StringBuffer();
@@ -585,7 +587,7 @@ public final class Program {
         }
         return sb.toString().substring(0, numchars);
     }
-    
+
     final public static char[] hexArray = "0123456789ABCDEF".toCharArray();
 	public static String bytesToHex(byte[] bytes) {
 	    char[] hexChars = new char[bytes.length * 2];

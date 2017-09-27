@@ -52,10 +52,9 @@ public final class Program {
 
     public static void main(String[] args) {
         try {
-            // Set up the MediaContract object to call into the Media Services account
             ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-            // Setup Azure AD Credentials (in this case using username and password)
+            // Setup Azure AD Service Principal Symmetric Key Credentials
             AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
                     tenant,
                     new AzureAdClientSymmetricKey(clientId, clientKey),
@@ -125,6 +124,9 @@ public final class Program {
 
             System.out.println("Origin Locator Url: " + url);
             System.out.println("Sample completed!");
+            
+            executorService.shutdown();
+            
         } catch (ServiceException se) {
             System.out.println("ServiceException encountered.");
             System.out.println(se.toString());

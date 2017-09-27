@@ -87,7 +87,7 @@ public final class Program {
     private static String tenant = "tenant.domain.com";
     private static String clientId = "<client id>";
     private static String clientKey = "<client key>";
-    private static String apiserver = "https://accountname.restv2.regionname.media.azure.net/api/";
+    private static String restApiEndpoint = "https://accountname.restv2.regionname.media.azure.net/api/";
 
     // Encoder configuration
     private static String preferedEncoder = "Media Encoder Standard";
@@ -117,7 +117,7 @@ public final class Program {
 
             // create a new configuration with the new credentials
             Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
-                    new URI(apiserver),
+                    new URI(restApiEndpoint),
                     provider);
 
             // create the media service provisioned with the new configuration

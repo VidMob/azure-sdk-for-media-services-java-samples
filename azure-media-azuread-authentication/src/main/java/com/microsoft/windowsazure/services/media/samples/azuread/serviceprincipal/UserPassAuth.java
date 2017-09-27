@@ -25,28 +25,28 @@ public final class UserPassAuth {
 
     public static void main(String[] args) {
         try {
-        	ExecutorService executorService = Executors.newFixedThreadPool(5);
+            ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-        	String tenant = "tenant.domain.com";
-        	String username = "email@example.com";
-        	String password = "thePass";
-        	String apiserver = "https://account.restv2.region.media.azure.net/api/";
+            String tenant = "tenant.domain.com";
+            String username = "email@example.com";
+            String password = "thePass";
+            String restApiEndpoint = "https://account.restv2.region.media.azure.net/api/";
 
-        	// Connect to Media Services API with user/password authentication
-        	AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
-        			tenant,
-        			new AzureAdClientUsernamePassword(username, password),
-        			AzureEnvironments.AzureCloudEnvironment);
+            // Connect to Media Services API with user/password authentication
+            AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
+                    tenant,
+                    new AzureAdClientUsernamePassword(username, password),
+                    AzureEnvironments.AzureCloudEnvironment);
 
-        	AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
+            AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
 
-        	// create a new configuration with the new credentials
-        	Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
-        			new URI(apiserver),
-        			provider);
+            // create a new configuration with the new credentials
+            Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
+                    new URI(apiserver),
+                    provider);
 
-        	// create the media service provisioned with the new configuration
-        	MediaContract mediaService = MediaService.create(configuration);
+            // create the media service provisioned with the new configuration
+            MediaContract mediaService = MediaService.create(configuration);
 
             System.out.println("Listing assets");
 

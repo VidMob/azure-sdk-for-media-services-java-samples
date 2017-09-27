@@ -31,29 +31,29 @@ public final class ServicePrincipalWithClientCertificate {
 
     public static void main(String[] args) {
         try {
-        	ExecutorService executorService = Executors.newFixedThreadPool(5);
+            ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-        	String tenant = "tenant.domain.com";
-        	String clientId = "%client_id%";
-        	String apiserver = "https://account.restv2.region.media.azure.net/api/";
-        	InputStream pfx = new FileInputStream("C://path/to/keystore.pfx");
-        	String pfxPassword = "%keystore_password%";
+            String tenant = "tenant.domain.com";
+            String clientId = "%client_id%";
+            String restApiEndpoint = "https://account.restv2.region.media.azure.net/api/";
+            InputStream pfx = new FileInputStream("C://path/to/keystore.pfx");
+            String pfxPassword = "%keystore_password%";
 
-        	// Connect to Media Services API with service principal and client certificate
-        	AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
-        			tenant,
-        			AsymmetricKeyCredential.create(clientId, pfx, pfxPassword),
-        			AzureEnvironments.AzureCloudEnvironment);
+            // Connect to Media Services API with service principal and client certificate
+            AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
+                    tenant,
+                    AsymmetricKeyCredential.create(clientId, pfx, pfxPassword),
+                    AzureEnvironments.AzureCloudEnvironment);
 
-        	AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
+            AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
 
-        	// create a new configuration with the new credentials
-        	Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
-        			new URI(apiserver),
-        			provider);
+            // create a new configuration with the new credentials
+            Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
+                    new URI(restApiEndpoint),
+                    provider);
 
-        	// create the media service with the new configuration
-        	MediaContract mediaService = MediaService.create(configuration);
+            // create the media service with the new configuration
+            MediaContract mediaService = MediaService.create(configuration);
 
             System.out.println("Listing assets");
 

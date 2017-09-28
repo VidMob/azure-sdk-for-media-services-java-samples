@@ -1,4 +1,4 @@
-package com.microsoft.windowsazure.services.media.samples.azuread.serviceprincipal;
+package com.microsoft.windowsazure.services.media.samples.azuread;
 
 import java.net.URI;
 import java.util.concurrent.ExecutorService;
@@ -24,9 +24,9 @@ public final class ServicePrincipalWithSymmetricKey {
     }
 
     public static void main(String[] args) {
+    	ExecutorService executorService = Executors.newFixedThreadPool(1);
+    	
         try {
-            ExecutorService executorService = Executors.newFixedThreadPool(5);
-
             String tenant = "tenant.domain.com";
             String clientId = "%client_id%";
             String clientKey = "%client_key%";
@@ -56,8 +56,6 @@ public final class ServicePrincipalWithSymmetricKey {
                 System.out.println(asset.getId());
             }
 
-            executorService.shutdown();
-
         } catch (ServiceException se) {
             System.out.println("ServiceException encountered.");
             System.out.println(se.toString());
@@ -65,6 +63,8 @@ public final class ServicePrincipalWithSymmetricKey {
             System.out.println("Exception encountered.");
             e.printStackTrace();
             System.out.println(e.toString());
+        } finally {
+        	executorService.shutdown();
         }
     }
 }

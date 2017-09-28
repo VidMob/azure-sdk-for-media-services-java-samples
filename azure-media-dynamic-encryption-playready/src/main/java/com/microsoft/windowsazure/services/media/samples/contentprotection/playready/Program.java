@@ -103,9 +103,9 @@ public final class Program {
     }
 
     public static void main(String[] args) {
-        try {
-            ExecutorService executorService = Executors.newFixedThreadPool(5);
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
 
+        try {
             // Connect to Media Services API with service principal and client symmetric key
             AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
                     tenant,
@@ -177,14 +177,14 @@ public final class Program {
             System.out.println("Origin Locator Url: " + url);
             System.out.println("Sample completed!");
 
-            executorService.shutdown();
-
         } catch (ServiceException se) {
             System.out.println("ServiceException encountered.");
             System.out.println(se.toString());
         } catch (Exception e) {
             System.out.println("Exception encountered.");
             System.out.println(e.toString());
+        } finally {
+            executorService.shutdown();
         }
     }
 

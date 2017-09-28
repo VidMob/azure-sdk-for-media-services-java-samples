@@ -31,13 +31,14 @@ public final class ServicePrincipalWithClientCertificate {
 
     public static void main(String[] args) {
     	ExecutorService executorService = Executors.newFixedThreadPool(1);
-    	
+
         try {
             String tenant = "tenant.domain.com";
             String clientId = "%client_id%";
             String restApiEndpoint = "https://account.restv2.region.media.azure.net/api/";
-            InputStream pfx = new FileInputStream("C://path/to/keystore.pfx");
+            String pfxFilename = "%path_to_keystore.pfx%";
             String pfxPassword = "%keystore_password%";
+            InputStream pfx = new FileInputStream(pfxFilename);
 
             // Connect to Media Services API with service principal and client certificate
             AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(

@@ -21,7 +21,7 @@ The following code shows how to connect a service to an Azure Media Services acc
 
 1. Get the [source code](src/main/java/com/microsoft/windowsazure/services/media/samples/azuread/ServicePrincipalWithSymmetricKey.java)
 1. Open it in your preferred Java IDE
-1. Substitute the values of the following variables with parameters obtained from the Azure portal:
+1. Substitute the values of the following variables with the values obtained from the Azure portal:
     * `tenant`: Set the tenant domain name which the user account belongs to, (e.g `microsoft.onmicrosoft.com`)
     * `clientId`: The client id obtained from the Azure portal.
     * `clientKey`: TThe client secret obtained from the Azure portal.

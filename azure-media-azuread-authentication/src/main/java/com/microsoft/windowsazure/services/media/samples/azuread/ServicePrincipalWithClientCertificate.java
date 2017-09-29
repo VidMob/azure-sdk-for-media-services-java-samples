@@ -44,7 +44,7 @@ public final class ServicePrincipalWithClientCertificate {
             AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
                     tenant,
                     AsymmetricKeyCredential.create(clientId, pfx, pfxPassword),
-                    AzureEnvironments.AzureCloudEnvironment);
+                    AzureEnvironments.AZURE_CLOUD_ENVIRONMENT);
 
             AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
 
@@ -72,7 +72,7 @@ public final class ServicePrincipalWithClientCertificate {
             e.printStackTrace();
             System.out.println(e.toString());
         } finally {
-        	executorService.shutdown();
+            executorService.shutdown();
         }
     }
 }

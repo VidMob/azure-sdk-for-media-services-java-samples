@@ -24,8 +24,8 @@ public final class ServicePrincipalWithSymmetricKey {
     }
 
     public static void main(String[] args) {
-    	ExecutorService executorService = Executors.newFixedThreadPool(1);
-    	
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+
         try {
             String tenant = "tenant.domain.com";
             String clientId = "%client_id%";
@@ -36,7 +36,7 @@ public final class ServicePrincipalWithSymmetricKey {
             AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
                     tenant,
                     new AzureAdClientSymmetricKey(clientId, clientKey),
-                    AzureEnvironments.AzureCloudEnvironment);
+                    AzureEnvironments.AZURE_CLOUD_ENVIRONMENT);
 
             AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
 
@@ -64,7 +64,7 @@ public final class ServicePrincipalWithSymmetricKey {
             e.printStackTrace();
             System.out.println(e.toString());
         } finally {
-        	executorService.shutdown();
+            executorService.shutdown();
         }
     }
 }

@@ -24,8 +24,8 @@ public final class UserPassAuth {
     }
 
     public static void main(String[] args) {
-    	ExecutorService executorService = Executors.newFixedThreadPool(1);
-    	
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+
         try {
             String tenant = "tenant.domain.com";
             String username = "email@example.com";
@@ -36,7 +36,7 @@ public final class UserPassAuth {
             AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
                     tenant,
                     new AzureAdClientUsernamePassword(username, password),
-                    AzureEnvironments.AzureCloudEnvironment);
+                    AzureEnvironments.AZURE_CLOUD_ENVIRONMENT);
 
             AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
 
@@ -64,7 +64,7 @@ public final class UserPassAuth {
             e.printStackTrace();
             System.out.println(e.toString());
         } finally {
-        	executorService.shutdown();
+            executorService.shutdown();
         }
     }
 }

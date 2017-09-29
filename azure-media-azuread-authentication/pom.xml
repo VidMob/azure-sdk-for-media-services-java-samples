@@ -8,13 +8,6 @@
   		<groupId>com.microsoft.azure</groupId>
   		<artifactId>azure-media</artifactId>
   		<version>0.9.8-SNAPSHOT</version>
-  	</dependency>
-  	<!-- https://mvnrepository.com/artifact/com.microsoft.azure/azure-storage -->
-	<dependency>
-	    <groupId>com.microsoft.azure</groupId>
-	    <artifactId>azure-storage</artifactId>
-	    <version>5.2.0</version>
-	</dependency>
-  	
+  	</dependency>  	
   </dependencies>
 </project>

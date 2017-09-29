@@ -1,33 +1,34 @@
-# Get Started
+# Using Azure AD authentication to access Azure Media Services API with Java
 
-This folder contains 3 samples showing different authentication scenarios to connect with Azure Media Services:
+This folder contains 3 samples showing different authentication scenarios to connect with Azure Media Services using Azure Active Directory:
 
 * Service principal with client symmetric key.
-* Service principal and client certificate.
-* User/Pass authentication scenario.
+* Service principal with client certificate.
+* User credentials.
 
-Notice that these scenarios rely on Azure Active Directory authentication.
-
-# Prerequisites
+## Prerequisites
 
 * A Media Services account in a new or existing Azure subscription. See the topic [How to Create a Media Services Account](http://go.microsoft.com/fwlink/?linkid=256662).
-* Make sure you review the [Accessing Azure Media Services API with Azure AD authentication overview](https://docs.microsoft.com/en-us/azure/media-services/media-services-use-aad-auth-to-access-ams-api).
+* Familiarity with the topic [Accessing Azure Media Services API with Azure AD authentication](https://docs.microsoft.com/en-us/azure/media-services/media-services-use-aad-auth-to-access-ams-api).
 
-# Connect to Media Services API with service principal and client symmetric key
+## Using service principal
 
-To connect to the Media Services API by using the service principal option, you need to obtain the service principal credentials from the Azure Portal, see here [how to configure Service principal authentication](https://docs.microsoft.com/en-us/azure/media-services/media-services-portal-get-started-with-aad#service-principal-authentication) and obtain the parameters required by this sample.
+To connect to the Azure Media Services API with the service principal option, the Azure AD application that represents your middle-tier app (web API or web application) needs to request an Azure AD token. The following examples shows how to request a token using a client symmetric key and a client certificate.
 
-The following code shows how to connect a service to an Azure Media Services account by using the service principal authentication option. Once you got the credentials, follow steps below:
+### Using service principal with client symmetric key
 
-1. Get the [source code](src/main/java/com/microsoft/windowsazure/services/media/samples/azuread/ServicePrincipalWithSymmetricKey.java)
-1. Open it in your preferred Java IDE
-1. Substitute the values of the following variables with the values obtained from the Azure portal:
-    * `tenant`: Set the tenant domain name which the user account belongs to, (e.g `microsoft.onmicrosoft.com`)
-    * `clientId`: The client id obtained from the Azure portal.
-    * `clientKey`: TThe client secret obtained from the Azure portal.
-    * `restApiEndpoint` The Azure Media Services account REST API endpoint.
+To connect to the Media Services API by using service principal with symmetric keys, follow these steps:
 
-    Hint: Look up this code snippet and replace values:
+1. Open the [sample code](src/main/java/com/microsoft/windowsazure/services/media/samples/azuread/ServicePrincipalWithSymmetricKey.java) in your Java IDE
+1. Specify the values for the following variables:
+    * `tenant`: The Azure AD tenant domain where the Azure AD application resides.
+    * `clientId`: The client ID of the Azure AD application.
+    * `clientKey`: The client key of the Azure AD application.
+    * `restApiEndpoint`: The REST API endpoint of the Azure Media Services account.
+
+    Those values can be obtained from the Azure Portal. For more information, see the **Service principal authentication** section of [Getting started with Azure AD authentication using the Azure portal](https://docs.microsoft.com/en-us/azure/media-services/media-services-portal-get-started-with-aad).
+
+    Hint: Look up this code snippet and replace the values:
 
         String tenant = "tenant.domain.com";
         String clientId = "%client_id%";
@@ -36,22 +37,22 @@ The following code shows how to connect a service to an Azure Media Services acc
 
 4. Run the sample.
 
-# Connect to Media Services API with service principal and client certificate
+### Using service principal with client certificate
 
-To connect to the Media Services API by using the service principal option with a client certificate, you first need to create a 2048 bits private key and its corresponding X509 certificate which, in turn, needs to be imported into the Azure AD App.
+To connect to the Media Services API by using the service principal option with a client certificate, you first need to create a 2048 bits private key and its corresponding X509 certificate which, in turn, needs to be imported into the Azure AD application.
 
-1. Create the private key and the certificate with `openssl`
+1. Create the private key and the certificate with `openssl`.
 
     First, create an RSA private key of 2048 bits and a X509 certificate (a public key) based on the former.
 
         $ openssl genrsa -out private.key 2048
         $ openssl req -new -x509 -key private.key -out publickey.cer -days 365
 
-    Then, create a PKCS12 container including both keys, this file will be later consumed by the Java SDK
+    Then, create a PKCS12 container file including both keys (you will need to specify a password). This file will be later consumed by the Java SDK.
 
         $ openssl pkcs12 -export -out keystore.pfx -inkey private.key -in publickey.cer
 
-1. Generate a base64 fingerprint from the certificate
+1. Generate a base64 fingerprint from the certificate.
 
     To get the certificate fingerprint in base64 format, run the following command in `bash`.
 
@@ -59,7 +60,7 @@ To connect to the Media Services API by using the service principal option with 
 
     This command will produce an output similar to the following: `Q+NyzfAQ3a/C+UGLO/MC9QnuZsI=`
 
-1. Export the X.509 certificate in base64 format
+1. Export the X.509 certificate in base64 format.
 
     To get the certificate in base64 format, run the following command in `bash`.
 
@@ -67,9 +68,9 @@ To connect to the Media Services API by using the service principal option with 
 
     This will generate a multi-line base64 block. Merge those lines as a single line base64 block (i.e. removing all CR/LF characters).
 
-1. Associate the certificate credentials with the Azure AD Application
+1. Associate the certificate credentials with the Azure AD application.
 
-    To associate the certificate credential with the Azure AD app, you will need to edit the application manifest. In the Azure Portal, look up the Azure AD app registration and click on Manifest. A blade opens enabling you to edit the manifest. You need to edit the value of the `keyCredentials` property (that is [] if you don't have any certificate credentials yet), adding the the following JSON Object:
+    To associate the certificate credential with the Azure AD app, you will need to edit the application manifest. In the Azure Portal, look up the Azure AD app registration and click on Manifest. A blade opens enabling you to edit the manifest. You need to edit the value of the `keyCredentials` property (that is [] if you don't have any certificate credentials yet), adding the following JSON Object:
 
         {
             "keyId":  "%user generated guid%",
@@ -85,13 +86,15 @@ To connect to the Media Services API by using the service principal option with 
 
     Note that the `keyId` must be filled with a valid GUID generated by the user. This will be the internal identifier for this specific credential.
 
-1. Get [the source code](src/main/java/com/microsoft/windowsazure/services/media/samples/azuread/ServicePrincipalWithClientCertificate.java)
+1. Open the [sample code](src/main/java/com/microsoft/windowsazure/services/media/samples/azuread/ServicePrincipalWithClientCertificate.java) in your Java IDE.
 1. Substitute the values of the following variables with parameters obtained from the Azure portal:
-    * `tenant`: Set the tenant domain name which the user account belongs to, (e.g `microsoft.onmicrosoft.com`)
-    * `clientId`: The client id obtained from the Azure portal (the Azure AD App Id)
-    * `restApiEndpoint`: The Azure Media Services account REST API endpoint.
+    * `tenant`: The Azure AD tenant domain where the Azure AD application resides.
+    * `clientId`: The client ID of the Azure AD application.
+    * `restApiEndpoint`: The REST API endpoint of the Azure Media Services account.
     * `pfxFilename`: The path to the PFX file with the private key and the certificate.
     * `pfxPassword`: The password required to open the PFX file.
+
+    The values for `tenant`, `clientId` and `restApiEndpoint` can be obtained from the Azure Portal. For more information, see the **Service principal authentication** section of [Getting started with Azure AD authentication using the Azure portal](https://docs.microsoft.com/en-us/azure/media-services/media-services-portal-get-started-with-aad).
 
     Hint: Look up this code snippet and replace values:
 
@@ -102,19 +105,18 @@ To connect to the Media Services API by using the service principal option with 
             String pfxPassword = "%keystore_password%";
 1. Run the sample
 
-# Connect to Media Services API with user/password authentication
+## Using user credentials
 
-The following code shows how to authenticate with Azure Media Services resources with user credentials (i.e. username and password). Note that this mechanism relies on providing the username and the password programmatically.
+The following example shows how to authenticate with Azure Media Services resources with user credentials (i.e. username and password). Note that this mechanism relies on providing the username and the password programmatically.
 
-In order to run this sample you should:
-
-1. Get the [source code](src/main/java/com/microsoft/windowsazure/services/media/samples/azuread/UserPassAuth.java)
-1. Open it in your preferred Java IDE
-1. Substitute the values of the following variables:
-    * `tenant`: Set the tenant domain name which the user account belongs to, (e.g `microsoft.onmicrosoft.com`)
+1. Open the [sample code](src/main/java/com/microsoft/windowsazure/services/media/samples/azuread/UserPassAuth.java) in your Java IDE.
+1. Specify the values of the following variables:
+    * `tenant`: Set the Azure AD tenant domain name where the user account belongs to.
     * `username`: The user email address.
     * `password`: The user password.
-    * `restApiEndpoint` The Azure Media Services account REST API endpoint.
+    * `restApiEndpoint`: The REST API endpoint of the Azure Media Services account.
+
+    The values for `tenant` and `restApiEndpoint` can be obtained from the Azure Portal. For more information, see the **User authentication** section of [Getting started with Azure AD authentication using the Azure portal](https://docs.microsoft.com/en-us/azure/media-services/media-services-portal-get-started-with-aad).
 
     Hint: Look up this code snippet and replace values:
 
@@ -123,4 +125,4 @@ In order to run this sample you should:
         String password = "thePass";
         String restApiEndpoint = "https://account.restv2.region.media.azure.net/api/";
 
-4. Run the sample.
+1. Run the sample.

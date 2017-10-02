@@ -84,7 +84,7 @@ public final class Program {
 
     // Encoder configuration
     private static String preferedEncoder = "Media Encoder Standard";
-    private static String encodingPreset = "H264 Multiple Bitrate 720p";
+    private static String encodingPreset = "Adaptive Streaming";
 
     // Content Key Authorization Policy Token Restriction configuration
     private static boolean tokenRestriction = true; // true: use token restriction policy;

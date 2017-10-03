@@ -107,7 +107,7 @@ public final class Program {
 
             // Run indexing job to generate output asset
             AssetInfo outputAsset = runIndexingJob(sourceAsset, taskConfiguration);
-            System.out.println("Encoded Asset Id: " + outputAsset.getId());
+            System.out.println("Output Asset Id: " + outputAsset.getId());
 
             // Download output asset files
             downloadAssetFiles(outputAsset, destinationPath);

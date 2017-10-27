@@ -7,6 +7,11 @@ import com.microsoft.windowsazure.Configuration;
 import com.microsoft.windowsazure.core.utils.Base64;
 import com.microsoft.windowsazure.exception.ServiceException;
 import com.microsoft.windowsazure.services.media.*;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdClientSymmetricKey;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenCredentials;
+import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenProvider;
+import com.microsoft.windowsazure.services.media.authentication.AzureEnvironments;
+import com.microsoft.windowsazure.services.media.authentication.TokenProvider;
 import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.*;
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.*;
 import com.microsoft.windowsazure.services.media.implementation.templates.widevine.*;
@@ -20,21 +25,22 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public final class Program {
 
     private static MediaContract mediaService;
 
     // Media Services account credentials configuration
-    private static String mediaServiceUri = "https://media.windows.net/API/";
-    private static String oAuthUri = "https://wamsprodglobal001acs.accesscontrol.windows.net/v2/OAuth2-13";
-    private static String clientId = "%media-services-account-name%";
-    private static String clientSecret = "%media-services-account-key%";
-    private static String scope = "urn:WindowsAzureMediaServices";
-    
+    private static String tenant = "tenant.domain.com";
+    private static String clientId = "<client id>";
+    private static String clientKey = "<client key>";
+    private static String restApiEndpoint = "https://accountname.restv2.regionname.media.azure.net/api/";
+
     // Encoder configuration
     private static String preferedEncoder = "Media Encoder Standard";
-    private static String encodingPreset = "H264 Multiple Bitrate 720p";
+    private static String encodingPreset = "Adaptive Streaming";
 
     // Content Key Authorization Policy Token Restriction configuration
     private static boolean tokenRestriction = true; // true: use token restriction policy;
@@ -46,10 +52,23 @@ public final class Program {
     }
 
     public static void main(String[] args) {
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+
         try {
-            // Set up the MediaContract object to call into the Media Services account
-            Configuration configuration = MediaConfiguration.configureWithOAuthAuthentication(
-                    mediaServiceUri, oAuthUri, clientId, clientSecret, scope);
+            // Setup Azure AD Service Principal Symmetric Key Credentials
+            AzureAdTokenCredentials credentials = new AzureAdTokenCredentials(
+                    tenant,
+                    new AzureAdClientSymmetricKey(clientId, clientKey),
+                    AzureEnvironments.AZURE_CLOUD_ENVIRONMENT);
+
+            TokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
+
+            // create a new configuration with the new credentials
+            Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
+                    new URI(restApiEndpoint),
+                    provider);
+
+            // create the media service provisioned with the new configuration
             mediaService = MediaService.create(configuration);
 
             System.out.println("Azure SDK for Java - PlayReady & Widevine Dynamic Encryption Sample");
@@ -106,12 +125,15 @@ public final class Program {
 
             System.out.println("Origin Locator Url: " + url);
             System.out.println("Sample completed!");
+
         } catch (ServiceException se) {
             System.out.println("ServiceException encountered.");
             System.out.println(se.toString());
         } catch (Exception e) {
             System.out.println("Exception encountered.");
             System.out.println(e.toString());
+        } finally {
+            executorService.shutdown();
         }
     }
 
@@ -190,7 +212,7 @@ public final class Program {
                 .setName(String.format("Encoding %s to %s", assetToEncode.getName(), encodingPreset))
                 .addInputMediaAsset(assetToEncode.getId()).setPriority(2).addTaskCreator(task);
         JobInfo job = mediaService.create(jobCreator);
-        
+
         String jobId = job.getId();
         System.out.println("Created Job with Id: " + jobId);
 
@@ -252,7 +274,7 @@ public final class Program {
     public static void addOpenAuthorizationPolicy(ContentKeyInfo contentKey) throws Exception {
         // Create ContentKeyAuthorizationPolicyRestriction (Open)
         List<ContentKeyAuthorizationPolicyRestriction> restrictions = new ArrayList<ContentKeyAuthorizationPolicyRestriction>();
-        restrictions.add(new ContentKeyAuthorizationPolicyRestriction("Open Restriction", 
+        restrictions.add(new ContentKeyAuthorizationPolicyRestriction("Open Restriction",
         		ContentKeyRestrictionType.Open.getValue(), null));
 
         // Create ContentKeyAuthorizationPolicyOption (PlayReady)
@@ -266,7 +288,7 @@ public final class Program {
         ContentKeyAuthorizationPolicyOptionInfo widevineOption = mediaService
                 .create(ContentKeyAuthorizationPolicyOption.create("Widevine Option",
                         ContentKeyDeliveryType.Widevine.getCode(), widevineLicenseTemplate, restrictions));
-        
+
         // Create ContentKeyAuthorizationPolicy
         ContentKeyAuthorizationPolicyInfo contentKeyAuthorizationPolicy = mediaService
                 .create(ContentKeyAuthorizationPolicy.create("PlayReady Open Content Key Authorization Policy"));
@@ -274,10 +296,10 @@ public final class Program {
         // Link the ContentKeyAuthorizationPolicyOptions to the ContentKeyAuthorizationPolicy
         mediaService.action(ContentKeyAuthorizationPolicy.linkOptions(contentKeyAuthorizationPolicy.getId(), playReadyOption.getId()));
         mediaService.action(ContentKeyAuthorizationPolicy.linkOptions(contentKeyAuthorizationPolicy.getId(), widevineOption.getId()));
-        
+
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
-        
+
         System.out.println("Added Content Key Authorization Policy: " + contentKeyAuthorizationPolicy.getName());
     }
 
@@ -300,7 +322,7 @@ public final class Program {
         ContentKeyAuthorizationPolicyOptionInfo widevineOption = mediaService
                 .create(ContentKeyAuthorizationPolicyOption.create("Widevine Option",
                         ContentKeyDeliveryType.Widevine.getCode(), widevineLicenseTemplate, restrictions));
-        
+
         // Create ContentKeyAuthorizationPolicy
         ContentKeyAuthorizationPolicyInfo contentKeyAuthorizationPolicy = mediaService
                 .create(ContentKeyAuthorizationPolicy.create("PlayReady Token Content Key Authorization Policy"));
@@ -311,7 +333,7 @@ public final class Program {
 
         // Associate the ContentKeyAuthorizationPolicy with the ContentKey
         mediaService.update(ContentKey.update(contentKey.getId(), contentKeyAuthorizationPolicy.getId()));
-        
+
         System.out.println("Added Content Key Authorization Policy: " + contentKeyAuthorizationPolicy.getName());
 
         return tokenRestrictionString;
@@ -322,7 +344,7 @@ public final class Program {
                 .create(ContentKey.getKeyDeliveryUrl(key.getId(), ContentKeyDeliveryType.PlayReadyLicense));
         String widevineUrl = mediaService
                 .create(ContentKey.getKeyDeliveryUrl(key.getId(), ContentKeyDeliveryType.Widevine));
-        
+
         Map<AssetDeliveryPolicyConfigurationKey, String> assetDeliveryPolicyConfiguration
             = new HashMap<AssetDeliveryPolicyConfigurationKey, String>();
 
@@ -334,7 +356,7 @@ public final class Program {
                 acquisitionUrl);
         assetDeliveryPolicyConfiguration.put(AssetDeliveryPolicyConfigurationKey.WidevineBaseLicenseAcquisitionUrl,
                 widevineUrl);
-        
+
         AssetDeliveryPolicyInfo assetDeliveryPolicy = mediaService.create(AssetDeliveryPolicy.create()
                 .setName("PlayReady & Widevine Dash Asset Delivery Policy")
                 .setAssetDeliveryConfiguration(assetDeliveryPolicyConfiguration)
@@ -380,7 +402,7 @@ public final class Program {
         while (!done) {
             // Sleep for 5 seconds
             Thread.sleep(5000);
-            
+
             // Query the updated Job state
             jobState = mediaService.get(Job.get(jobId)).getState();
             System.out.println("Job state: " + jobState);
@@ -402,7 +424,7 @@ public final class Program {
 
         return MediaServicesLicenseTemplateSerializer.serialize(responseTemplate);
     }
-    
+
     private static String configureWidevineLicenceTemplate() throws JsonProcessingException {
         // Configure Widevine License Template and serialize it to JSON
         WidevineMessage message = new WidevineMessage();

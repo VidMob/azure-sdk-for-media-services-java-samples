@@ -2,12 +2,17 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>azure-media-demos</groupId>
   <artifactId>azure-media-azuread-authentication</artifactId>
-  <version>0.9.8-SNAPSHOT</version>
+  <version>0.9.8</version>
   <dependencies>
     <dependency>
   		<groupId>com.microsoft.azure</groupId>
   		<artifactId>azure-media</artifactId>
-  		<version>0.9.8-SNAPSHOT</version>
-  	</dependency>  	
+  		<version>0.9.8</version>
+  	</dependency>
+	<dependency>
+	    <groupId>com.microsoft.azure</groupId>
+	    <artifactId>azure-storage</artifactId>
+	    <version>5.2.0</version>
+	</dependency>
   </dependencies>
 </project>

@@ -11,6 +11,7 @@ import com.microsoft.windowsazure.services.media.authentication.AzureAdClientSym
 import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenCredentials;
 import com.microsoft.windowsazure.services.media.authentication.AzureAdTokenProvider;
 import com.microsoft.windowsazure.services.media.authentication.AzureEnvironments;
+import com.microsoft.windowsazure.services.media.authentication.TokenProvider;
 import com.microsoft.windowsazure.services.media.implementation.templates.playreadylicense.*;
 import com.microsoft.windowsazure.services.media.implementation.templates.tokenrestriction.*;
 import com.microsoft.windowsazure.services.media.implementation.templates.widevine.*;
@@ -60,7 +61,7 @@ public final class Program {
                     new AzureAdClientSymmetricKey(clientId, clientKey),
                     AzureEnvironments.AZURE_CLOUD_ENVIRONMENT);
 
-            AzureAdTokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
+            TokenProvider provider = new AzureAdTokenProvider(credentials, executorService);
 
             // create a new configuration with the new credentials
             Configuration configuration = MediaConfiguration.configureWithAzureAdTokenProvider(
